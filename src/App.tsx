@@ -39,7 +39,8 @@ import {
   Clock,
   HeartHandshake,
   Sun,
-  Moon
+  Moon,
+  FileDown
 } from "lucide-react";
 import DiagnosticTool from "./components/DiagnosticTool";
 import AnimateOnReveal from "./components/AnimateOnReveal";
@@ -373,6 +374,50 @@ export default function App() {
     () => (localStorage.getItem("theme") as "dark" | "light") || "dark"
   );
 
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const html2pdfModule = await import("html2pdf.js");
+      // html2pdf.js sometimes exports as default, sometimes as module directly depending on package bundler context
+      const html2pdf = (html2pdfModule.default || html2pdfModule) as any;
+      
+      const element = document.getElementById("pdf-portfolio-template");
+      if (!element) {
+        throw new Error("PDF template not found");
+      }
+
+      const opt = {
+        margin:       [0.4, 0.4, 0.4, 0.4],
+        filename:     "Abhijeet_Suman_Consulting_Portfolio.pdf",
+        image:        { type: "jpeg", quality: 0.98 },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          letterRendering: true,
+          windowWidth: 800
+        },
+        jsPDF:        { unit: "in", format: "letter", orientation: "portrait" },
+        pagebreak:    { mode: ["avoid-all", "css", "legacy"] }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+
+      confetti({
+        particleCount: 60,
+        spread: 60,
+        origin: { y: 0.6 }
+      });
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      alert("Could not generate PDF. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "light") {
@@ -491,6 +536,21 @@ export default function App() {
 
           <div className="hidden xl:flex items-center gap-4">
             <button
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF}
+              className={`px-3 py-2 bg-[#0F1115] border ${
+                isGeneratingPDF 
+                  ? "border-[#FFB800]/40 text-[#FFB800]" 
+                  : "border-white/10 text-gray-400 hover:text-[#FFB800] hover:border-[#FFB800]/30"
+              } rounded-xl transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs`}
+              title="Download Portfolio as PDF"
+            >
+              <FileDown className={`w-3.5 h-3.5 ${isGeneratingPDF ? "animate-bounce text-[#FFB800]" : ""}`} />
+              <span className="text-[10px] uppercase tracking-wider">
+                {isGeneratingPDF ? "Generating PDF..." : "PDF Portfolio"}
+              </span>
+            </button>
+            <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="p-2 bg-[#0F1115] border border-white/10 rounded-lg text-gray-400 hover:text-[#0F62FE] hover:border-[#0F62FE]/30 transition-all cursor-pointer flex items-center justify-center"
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -513,9 +573,12 @@ export default function App() {
             </a>
             <a 
               href="#contact" 
-              className="px-4 py-2 bg-[#0F62FE] hover:bg-[#3b82f6] text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-all"
+              className="px-4 py-2.5 bg-[#FFB800] hover:bg-[#FFC526] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center gap-2 group shadow-lg shadow-[#FFB800]/15"
             >
               Consult Now
+              <span className="w-5 h-5 bg-black text-white rounded-full flex items-center justify-center font-bold text-[10px] group-hover:translate-x-0.5 transition-transform duration-300">
+                →
+              </span>
             </a>
           </div>
 
@@ -552,6 +615,19 @@ export default function App() {
             </div>
              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-4">
                <div className="flex gap-2">
+                 <button
+                   onClick={handleDownloadPDF}
+                   disabled={isGeneratingPDF}
+                   className={`p-2.5 bg-[#0F1115] border ${
+                     isGeneratingPDF 
+                       ? "border-[#FFB800]/40 text-[#FFB800]" 
+                       : "border-white/10 text-gray-400 hover:text-[#FFB800]"
+                   } rounded-lg flex items-center justify-center cursor-pointer`}
+                   title="Download Portfolio PDF"
+                   aria-label="Download Portfolio PDF"
+                 >
+                   <FileDown className={`w-4 h-4 ${isGeneratingPDF ? "animate-bounce" : ""}`} />
+                 </button>
                  <a 
                    href="https://www.linkedin.com/in/abhijeet-suman-6b1616144" 
                    target="_blank" 
@@ -575,7 +651,7 @@ export default function App() {
                <a 
                  onClick={() => setMobileMenuOpen(false)}
                  href="#contact" 
-                 className="flex-grow text-center px-4 py-2.5 bg-[#0F62FE] text-white text-xs font-bold uppercase tracking-widest rounded-lg"
+                 className="flex-grow flex items-center justify-center gap-2 text-center px-4 py-2.5 bg-[#FFB800] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shadow-[#FFB800]/10"
                >
                  Consult Now
                </a>
@@ -618,16 +694,21 @@ export default function App() {
               <div className="flex flex-wrap gap-4 pt-2">
                 <a 
                   href="#contact" 
-                  className="px-7 py-4 bg-[#0F62FE] hover:bg-[#3b82f6] text-white font-bold uppercase tracking-widest text-xs rounded-lg transition-all shadow-lg shadow-[#0F62FE]/20 hover:-translate-y-0.5"
+                  className="px-6 py-4 bg-[#FFB800] hover:bg-[#FFC526] text-black font-extrabold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg shadow-[#FFB800]/25 flex items-center gap-3.5 group hover:-translate-y-0.5"
                 >
-                  Book Confidential Consultation
+                  <span>Book Confidential Consultation</span>
+                  <span className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:translate-x-0.5 transition-transform duration-300">
+                    <ArrowRight className="w-3.5 h-3.5 text-black font-bold" />
+                  </span>
                 </a>
                 <a 
                   href="#growth-diagnostic" 
-                  className="px-7 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold uppercase tracking-widest text-xs rounded-lg transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                  className="px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center gap-3.5 group hover:-translate-y-0.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#0F62FE]" />
-                  Launch Free Diagnostic
+                  <span>Launch Free Diagnostic</span>
+                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Play className="w-2.5 h-2.5 text-white fill-white" />
+                  </span>
                 </a>
               </div>
 
@@ -1056,24 +1137,21 @@ export default function App() {
           {/* Premium Bento Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {SERVICES_DATA.map((service, idx) => {
-              const isFirstTwo = idx < 2;
               return (
                 <div 
                   key={service.id}
-                  className={`p-6 bg-[#0F111A] border border-white/10 rounded-2xl flex flex-col justify-between hover:border-[#0F62FE]/30 transition-all duration-300 hover:-translate-y-1 relative group ${
-                    isFirstTwo ? "lg:col-span-1 border-white/15" : ""
-                  }`}
+                  className="p-7 bg-[#0E111E]/60 border border-white/10 dark:border-white/5 rounded-2xl flex flex-col justify-between hover:border-[#FFB800]/30 hover:bg-[#0E111E]/90 transition-all duration-300 hover:shadow-2xl hover:shadow-[#FFB800]/5 hover:-translate-y-1 relative group"
                 >
                   {/* Glowing hover indicator */}
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#0F62FE]/5 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#FFB800]/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                   
                   <div className="space-y-4 relative z-10">
                     <div className="flex justify-between items-start">
                       <span className="text-2xl">{service.icon}</span>
-                      <span className="text-xs font-mono text-gray-600 font-bold">{service.num}</span>
+                      <span className="text-xs font-mono text-gray-500 font-bold">{service.num}</span>
                     </div>
 
-                    <h4 className="font-display font-bold text-lg text-white group-hover:text-[#0F62FE] transition-colors">
+                    <h4 className="font-display font-bold text-lg text-white group-hover:text-[#FFB800] transition-colors">
                       {service.title}
                     </h4>
 
@@ -1087,7 +1165,7 @@ export default function App() {
                       <ul className="space-y-1.5">
                         {service.outcomes.map((outcome, oIdx) => (
                           <li key={oIdx} className="flex gap-2 items-start text-[11px] text-gray-300">
-                            <span className="text-[#0F62FE] font-bold mt-0.5 shrink-0">✓</span>
+                            <span className="text-[#FFB800] font-bold mt-0.5 shrink-0">✓</span>
                             <span>{outcome}</span>
                           </li>
                         ))}
@@ -1098,11 +1176,14 @@ export default function App() {
                   <div className="pt-5 mt-5 border-t border-white/5 relative z-10 flex justify-between items-center">
                     <button 
                       onClick={() => handleEnquireService(service.title)}
-                      className="text-[10px] font-bold uppercase tracking-widest text-white hover:text-[#0F62FE] transition-colors flex items-center gap-1 cursor-pointer"
+                      className="text-[10px] font-bold uppercase tracking-wider text-white hover:text-[#FFB800] transition-all flex items-center gap-2 group/btn cursor-pointer"
                     >
-                      Enquire Service <ChevronRight className="w-3 h-3" />
+                      <span>Enquire Service</span>
+                      <span className="w-5 h-5 bg-white/5 border border-white/10 group-hover/btn:bg-[#FFB800] group-hover/btn:border-[#FFB800] group-hover/btn:text-black rounded-lg flex items-center justify-center transition-all duration-300">
+                        <ChevronRight className="w-3 h-3 text-current" />
+                      </span>
                     </button>
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-[#0F62FE] transition-all" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-[#FFB800] transition-all" />
                   </div>
                 </div>
               );
@@ -1797,6 +1878,207 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* ── HIDDEN PRINTABLE PORTFOLIO TEMPLATE FOR PDF GENERATION ── */}
+      <div 
+        id="pdf-portfolio-template" 
+        style={{ 
+          position: "absolute", 
+          left: "-9999px", 
+          top: "-9999px", 
+          width: "780px", 
+          padding: "45px", 
+          backgroundColor: "#ffffff", 
+          color: "#111827", 
+          fontFamily: "'Inter', sans-serif",
+          boxSizing: "border-box",
+          // Overriding standard Tailwind v4 CSS variables to prevent html2canvas parsing oklch values
+          "--color-white": "#ffffff",
+          "--color-black": "#000000",
+          "--color-gray-50": "#f9fafb",
+          "--color-gray-100": "#f3f4f6",
+          "--color-gray-200": "#e5e7eb",
+          "--color-gray-300": "#d1d5db",
+          "--color-gray-400": "#9ca3af",
+          "--color-gray-500": "#6b7280",
+          "--color-gray-600": "#4b5563",
+          "--color-gray-700": "#374151",
+          "--color-gray-800": "#1f2937",
+          "--color-gray-900": "#111827",
+          "--color-gray-950": "#030712",
+          "--color-amber-50": "#fefbeb",
+          "--color-amber-100": "#fef3c7",
+          "--color-amber-200": "#fde68a",
+          "--color-amber-850": "#92400e",
+          "--color-amber-800": "#92400e",
+        } as React.CSSProperties}
+        className="text-black bg-white"
+      >
+        {/* PDF Header Banner */}
+        <div style={{ borderBottom: "4px solid #0F62FE" }} className="pb-6 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 uppercase">
+                Abhijeet Suman
+              </h1>
+              <h2 style={{ color: "#0F62FE" }} className="text-sm font-bold tracking-wide mt-1 uppercase">
+                Founder, SKARTO · Enterprise Systems &amp; AI Advisor
+              </h2>
+              <p className="text-xs text-gray-600 mt-2 max-w-lg leading-relaxed">
+                MIT, IIBA, and PMI certified Advisor with 10+ years of high-performance delivery. Helping manufacturing institutions, enterprise accounts, and high-growth SMEs automate operations and scale client acquisition.
+              </p>
+            </div>
+            <div className="text-right text-[11px] text-gray-600 space-y-1 font-mono shrink-0">
+              <p className="font-bold text-gray-900">CONTACT INFO</p>
+              <p>🌐 skarto.cloud</p>
+              <p>✉ abhijeet@skarto.cloud</p>
+              <p>✉ abhijeetsuman.er@gmail.com</p>
+              <p>☎ +91 70098 99194</p>
+              <p>📍 Indore, M.P., India</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Executive Summary */}
+        <div className="mb-6">
+          <h3 style={{ borderColor: "#e5e7eb" }} className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b pb-1 mb-2">
+            Executive Growth Focus
+          </h3>
+          <p className="text-xs text-gray-700 leading-relaxed">
+            A seasoned Growth Architect specializing in systems re-engineering. I integrate custom CRM pipelines, high-conversion branding assets, and autonomous outbound sales sequences to unlock predictable growth. Through <strong>SKARTO</strong>, we design, deploy, and maintain robust client-acquisition systems, delivering measurable client impact exceeding <strong>₹80Cr+</strong> in cumulative revenue expansion.
+          </p>
+        </div>
+
+        {/* Practice Verticals / Services */}
+        <div className="mb-6">
+          <h3 style={{ borderColor: "#e5e7eb" }} className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b pb-1 mb-3">
+            Core Consulting Practice &amp; Offerings
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            {SERVICES_DATA.map((service, idx) => (
+              <div 
+                key={idx} 
+                style={{ borderColor: "#f3f4f6", backgroundColor: "rgba(249, 250, 251, 0.65)" }} 
+                className="p-3 border rounded-lg"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-sm">{service.icon}</span>
+                  <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-tight">
+                    {service.title}
+                  </h4>
+                </div>
+                <p className="text-[10px] text-gray-600 leading-normal mb-2">
+                  {service.description}
+                </p>
+                <div className="space-y-1">
+                  {service.outcomes.map((outcome, oIdx) => (
+                    <div key={oIdx} className="flex items-start gap-1.5 text-[9px] text-gray-700">
+                      <span style={{ color: "#0F62FE" }} className="font-bold">✓</span>
+                      <span>{outcome}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Professional Experience */}
+        <div className="mb-6">
+          <h3 style={{ borderColor: "#e5e7eb" }} className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b pb-1 mb-3">
+            Professional Enterprise Tenure
+          </h3>
+          <div className="space-y-4">
+            {EXPERIENCE_DATA.map((exp, idx) => (
+              <div key={idx} style={{ borderLeftColor: "rgba(15, 98, 254, 0.3)" }} className="border-l-2 pl-3 py-0.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-gray-900">
+                      {exp.role}
+                    </h4>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">
+                      {exp.company}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-mono text-gray-500 font-bold block">
+                      {exp.period}
+                    </span>
+                    <span 
+                      style={{ 
+                        backgroundColor: "#fefbeb", 
+                        color: "#92400e", 
+                        borderColor: "rgba(253, 230, 138, 0.5)" 
+                      }} 
+                      className="text-[9px] border px-1.5 py-0.2 rounded-full font-bold"
+                    >
+                      {exp.impact}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-600 mt-1 mb-2 leading-normal italic">
+                  {exp.desc}
+                </p>
+                
+                {/* Skills tags */}
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {exp.skills.map((skill, sIdx) => (
+                    <span 
+                      key={sIdx} 
+                      style={{ backgroundColor: "rgba(15, 98, 254, 0.05)", color: "#0F62FE" }} 
+                      className="text-[8px] px-1.5 py-0.5 rounded font-mono font-bold uppercase"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Achievements bullets */}
+                <ul className="space-y-1">
+                  {exp.achievements.map((ach, aIdx) => (
+                    <li key={aIdx} className="text-[9.5px] text-gray-700 leading-normal flex items-start gap-1.5">
+                      <span className="text-gray-400 font-bold">•</span>
+                      <span>{ach}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Consulting Methodology */}
+        <div className="mb-4">
+          <h3 style={{ borderColor: "#e5e7eb" }} className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b pb-1 mb-3">
+            Consulting Methodology
+          </h3>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {METHODOLOGY_STEPS.map((step, idx) => (
+              <div 
+                key={idx} 
+                style={{ borderColor: "#f3f4f6", backgroundColor: "rgba(249, 250, 251, 0.4)" }} 
+                className="p-2 border rounded"
+              >
+                <span style={{ color: "#0F62FE" }} className="text-[10px] font-mono font-bold block mb-0.5">
+                  PHASE 0{idx + 1}
+                </span>
+                <span className="text-[9px] font-bold text-gray-900 uppercase block leading-tight mb-1">
+                  {step.title}
+                </span>
+                <p className="text-[8px] text-gray-600 leading-tight">
+                  {step.objective}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* NDA & Call to Action Footer */}
+        <div style={{ borderColor: "#e5e7eb" }} className="mt-8 pt-4 border-t flex justify-between items-center text-[9px] text-gray-500 font-mono">
+          <span>ABHIJEET SUMAN CONSULTING · CONFIDENTIAL PORTFOLIO DOCUMENT</span>
+          <span>BOOK AT: SKARTO.CLOUD</span>
+        </div>
+      </div>
 
     </div>
   );
