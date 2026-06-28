@@ -44,8 +44,10 @@ import {
 } from "lucide-react";
 import DiagnosticTool from "./components/DiagnosticTool";
 import AnimateOnReveal from "./components/AnimateOnReveal";
+import CountUp from "./components/CountUp";
 import { ServiceItem, TimelineItem, ContactInputs } from "./types";
 import confetti from "canvas-confetti";
+import { motion } from "motion/react";
 
 // Premium Services dataset rewritten with precise executive scope and metrics
 const SERVICES_DATA: ServiceItem[] = [
@@ -299,21 +301,21 @@ const INSIGHTS_DATA = [
     title: "How to Build an Owner-Independent Sales Engine: The Complete Framework",
     excerpt: "Discover the structural blueprints required to transition your client acquisition process from founder-dependent to fully systematized.",
     readTime: "7 min read",
-    date: "June 2026"
+    date: "June 2019"
   },
   {
     topic: "AI Strategy",
     title: "AI Adoption Beyond the Hype: Where to Reclaim Margin",
     excerpt: "Stop chasing trending consumer chatbots. Learn where actual corporate operations gain raw leverage through structured automation.",
     readTime: "9 min read",
-    date: "May 2026"
+    date: "May 2019"
   },
   {
     topic: "Sales Leadership",
     title: "Consultative Negotiation: The Art of High-Ticket B2B Closes",
     excerpt: "Stop pitching features. Understand how to design value-focused corporate solutions that align perfectly with client financial goals.",
     readTime: "6 min read",
-    date: "April 2026"
+    date: "April 2019"
   }
 ];
 
@@ -428,6 +430,25 @@ export default function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        const progress = (window.scrollY / totalHeight) * 100;
+        setScrollProgress(progress);
+      } else {
+        setScrollProgress(0);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    // Initial call
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   // Form states
   const [formInputs, setFormInputs] = useState<ContactInputs>({
     name: "",
@@ -439,6 +460,8 @@ export default function App() {
   });
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [formFeedback, setFormFeedback] = useState<string>("");
+  const [lastSubmittedInputs, setLastSubmittedInputs] = useState<ContactInputs | null>(null);
+  const [forwardingMethod, setForwardingMethod] = useState<"whatsapp" | "email" | "both">("whatsapp");
 
   const handleEnquireService = (serviceTitle: string) => {
     setFormInputs(prev => ({ ...prev, service: serviceTitle }));
@@ -473,6 +496,7 @@ export default function App() {
       if (response.ok && data.success) {
         setFormStatus("success");
         setFormFeedback(data.message);
+        setLastSubmittedInputs({ ...formInputs });
         
         // Trigger blue & purple premium confetti sequence
         confetti({
@@ -481,6 +505,27 @@ export default function App() {
           origin: { y: 0.6 },
           colors: ["#0F62FE", "#8B5CF6", "#0F1115", "#FFFFFF"]
         });
+
+        // Trigger automatic redirection/opening for WhatsApp or Email based on user setting
+        const subjectText = `Strategic Briefing Inquiry - ${formInputs.organization || formInputs.name}`;
+        const bodyText = `Hi Abhijeet,\n\nI just registered a Strategic Briefing inquiry via your digital portfolio.\n\n*Client Details:*\n• Name: ${formInputs.name}\n• Organization: ${formInputs.organization}\n• Email: ${formInputs.email}\n• Phone: ${formInputs.phone}\n• Selected Service: ${formInputs.service}\n\n*Strategic Context:*\n${formInputs.context}`;
+        
+        if (forwardingMethod === "whatsapp") {
+          const waUrl = `https://wa.me/917009899194?text=${encodeURIComponent(bodyText)}`;
+          window.open(waUrl, "_blank");
+        } else if (forwardingMethod === "email") {
+          const emailBody = bodyText.replace(/\*/g, ""); // strip bold asterisks for plain mailto
+          const mailUrl = `mailto:abhijeet@skarto.cloud?cc=abhijeetsuman.er@gmail.com&subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(emailBody)}`;
+          window.open(mailUrl, "_blank");
+        } else if (forwardingMethod === "both") {
+          const waUrl = `https://wa.me/917009899194?text=${encodeURIComponent(bodyText)}`;
+          const emailBody = bodyText.replace(/\*/g, "");
+          const mailUrl = `mailto:abhijeet@skarto.cloud?cc=abhijeetsuman.er@gmail.com&subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(emailBody)}`;
+          window.open(waUrl, "_blank");
+          setTimeout(() => {
+            window.location.href = mailUrl;
+          }, 800);
+        }
 
         // Clear form
         setFormInputs({
@@ -502,6 +547,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070913] text-gray-100 font-sans antialiased selection:bg-[#0F62FE] selection:text-white premium-bg-grid mesh-gradient-1">
+      
+      {/* Scroll Progress Bar */}
+      <div 
+        className="fixed top-0 left-0 h-1 bg-gradient-to-r from-[#0F62FE] via-[#8B5CF6] to-[#FFB800] z-[100] transition-all duration-75 ease-out"
+        style={{ width: `${scrollProgress}%` }}
+      />
       
       {/* ── HEADER / NAVIGATION ── */}
       <header className="sticky top-0 z-50 bg-[#070913]/90 backdrop-blur-xl border-b border-white/10">
@@ -955,7 +1006,7 @@ export default function App() {
               className="space-y-1 group cursor-default"
             >
               <div className="font-display font-black text-3xl sm:text-5xl text-white group-hover:text-[#0F62FE] transition-colors duration-300 tracking-tight">
-                10+ <span className="text-[#0F62FE]">Years</span>
+                <CountUp end={10} />+ <span className="text-[#0F62FE]">Years</span>
               </div>
               <span className="font-mono text-[9px] text-gray-400 uppercase tracking-widest font-bold block">Advisory Excellence</span>
             </div>
@@ -966,7 +1017,7 @@ export default function App() {
               className="space-y-1 group cursor-default"
             >
               <div className="font-display font-black text-3xl sm:text-5xl text-white group-hover:text-[#8B5CF6] transition-colors duration-300 tracking-tight">
-                100+ <span className="text-[#8B5CF6]">Brands</span>
+                <CountUp end={100} />+ <span className="text-[#8B5CF6]">Brands</span>
               </div>
               <span className="font-mono text-[9px] text-gray-400 uppercase tracking-widest font-bold block">SMEs &amp; Corporates</span>
             </div>
@@ -977,7 +1028,7 @@ export default function App() {
               className="space-y-1 group cursor-default col-span-2 md:col-span-1"
             >
               <div className="font-display font-black text-3xl sm:text-5xl text-white group-hover:text-[#0F62FE] transition-colors duration-300 tracking-tight">
-                ₹80Cr+
+                ₹<CountUp end={80} />Cr+
               </div>
               <span className="font-mono text-[9px] text-gray-400 uppercase tracking-widest font-bold block text-transparent bg-clip-text bg-gradient-to-r from-[#0F62FE] to-[#8B5CF6]">Revenue Impact Realized</span>
             </div>
@@ -988,7 +1039,7 @@ export default function App() {
               className="space-y-1 group cursor-default"
             >
               <div className="font-display font-black text-3xl sm:text-5xl text-white group-hover:text-[#8B5CF6] transition-colors duration-300 tracking-tight">
-                12+ <span className="text-[#8B5CF6]">Sectors</span>
+                <CountUp end={12} />+ <span className="text-[#8B5CF6]">Sectors</span>
               </div>
               <span className="font-mono text-[9px] text-gray-400 uppercase tracking-widest font-bold block">Industries Served</span>
             </div>
@@ -999,7 +1050,7 @@ export default function App() {
               className="space-y-1 group cursor-default"
             >
               <div className="font-display font-black text-3xl sm:text-4xl text-white group-hover:text-[#0F62FE] transition-colors duration-300 tracking-tight">
-                4.7K+
+                <CountUp end={4.7} decimals={1} />K+
               </div>
               <span className="font-mono text-[9px] text-gray-400 uppercase tracking-widest font-bold block">LinkedIn Community</span>
             </div>
@@ -1135,11 +1186,37 @@ export default function App() {
           </div>
 
           {/* Premium Bento Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.15
+                }
+              }
+            }}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.05 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
             {SERVICES_DATA.map((service, idx) => {
               return (
-                <div 
+                <motion.div 
                   key={service.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 30 },
+                    show: { 
+                      opacity: 1, 
+                      y: 0,
+                      transition: {
+                        type: "spring",
+                        stiffness: 80,
+                        damping: 15
+                      }
+                    }
+                  }}
                   className="p-7 bg-[#0E111E]/60 border border-white/10 dark:border-white/5 rounded-2xl flex flex-col justify-between hover:border-[#FFB800]/30 hover:bg-[#0E111E]/90 transition-all duration-300 hover:shadow-2xl hover:shadow-[#FFB800]/5 hover:-translate-y-1 relative group"
                 >
                   {/* Glowing hover indicator */}
@@ -1185,10 +1262,10 @@ export default function App() {
                     </button>
                     <span className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-[#FFB800] transition-all" />
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </AnimateOnReveal>
       </section>
 
@@ -1869,7 +1946,7 @@ export default function App() {
           </div>
 
           <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 text-gray-600 text-[10px] font-mono uppercase tracking-wider">
-            <span>© {new Date().getFullYear()} Abhijeet Suman Consulting. All rights reserved.</span>
+            <span>© 2019 Abhijeet Suman Consulting. All rights reserved.</span>
             <div className="flex gap-4">
               <span>DESIGNED TO PREMIER ENTERPRISE STANDARDS</span>
               <span>•</span>
